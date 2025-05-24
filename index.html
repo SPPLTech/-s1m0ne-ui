@@ -3,34 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>S1M0NE – Suppple AI Assistant</title>
+  <title>S1M0NE Voice Assistant</title>
   <style>
     body {
+      background-color: #0c1f3f;
+      color: #ffffff;
       font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: #f0f0f0;
-      text-align: center;
-      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
     }
     h1 {
-      color: #00ffff;
+      color: #f44336;
     }
-    p {
-      max-width: 600px;
-      margin: 1rem auto;
-      line-height: 1.6;
+    button {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      margin-top: 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    button:hover {
+      background-color: #c62828;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 <body>
   <h1>S1M0NE – Simulation One</h1>
-  <p>A benevolent voice-powered assistant by Suppple AI, guided by Ubuntu and Asimov's Three Laws of Robotics.</p>
-  <p>This demo page confirms that the site is live and accessible via GitHub Pages.</p>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-  // Paste the full script from "Supabase Frontend Logger" here
-</script>
-<button onclick="startListening()">🎙 Start Listening</button>
-<button onclick="exportCSV()">⬇️ Export CSV</button>
+  <p>A benevolent voice-powered assistant by Suppple AI</p>
+  <button onclick="startConversation()">START A CONVERSATION</button>
+  <button onclick="exportCSV()">Download Logs</button>
+
+  <script>
+    const SUPABASE_URL = "https://mgwbmwlfprbejfkgytip.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nd2Jtd2xmcHJiZWpma2d5dGlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyMDc3MjEsImV4cCI6MjA2Mjc4MzcyMX0.evrYwsgNozWv4QJbRmaww_7kqIMtD0a0EbL_eee24hg";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function startConversation() {
+      const recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+      recognition.onresult = async function(event) {
+        const prompt = event.results[0][0].transcript;
+        const response = "Simulated response to: " + prompt;
+        const audioUrl = await speak(response);
+
+        await logConversation(prompt, response, audioUrl);
+      };
+
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+      };
+    }
+
+    async function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utter);
+      return "https://dummy-url.com/audio.mp3";
+    }
+
+    async function logConversation(prompt, response, audioUrl) {
+      const { data, error } = await supabase.from('conversations').insert([
+        {
+          query: prompt,
+          response: response,
+          audio_url: audioUrl
+        }
+      ]);
+      if (error) {
+        console.error('Supabase log error:', error);
+      } else {
+        console.log('Conversation logged:', data);
+      }
+    }
+
+    async function exportCSV() {
+      const { data, error } = await supabase.from("conversations").select("*");
+      if (error) return alert("Error exporting logs");
+
+      const csvContent = [
+        ["ID", "Query", "Response", "Audio URL", "Created At"],
+        ...data.map(row => [row.id, row.query, row.response, row.audio_url, row.created_at])
+      ].map(e => e.join(",")).join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "s1m0ne_logs.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
 </body>
 </html>
