@@ -34,6 +34,7 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.min.js"></script>
 </head>
 <body>
   <h1>S1M0NE – Simulation One</h1>
@@ -43,8 +44,22 @@
 
   <script>
     const SUPABASE_URL = "https://mgwbmwlfprbejfkgytip.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nd2Jtd2xmcHJiZWpma2d5dGlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyMDc3MjEsImV4cCI6MjA2Mjc4MzcyMX0.evrYwsgNozWv4QJbRmaww_7kqIMtD0a0EbL_eee24hg";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUz..."; // redacted for security
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function getLiveKitToken() {
+      const res = await fetch("https://your-backend.com/get-livekit-token");
+      const data = await res.json();
+      return data.token;
+    }
+
+    async function connectLiveKit() {
+      const token = await getLiveKitToken();
+      const room = new Livekit.Room();
+      await room.connect("wss://your-livekit-server-url", token);
+      console.log("Connected to LiveKit");
+      return room;
+    }
 
     async function startConversation() {
       const recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -55,10 +70,18 @@
       recognition.start();
       recognition.onresult = async function(event) {
         const prompt = event.results[0][0].transcript;
-        const response = "Simulated response to: " + prompt;
-        const audioUrl = await speak(response);
 
-        await logConversation(prompt, response, audioUrl);
+        const ttsResponse = await fetch("https://your-backend.com/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: prompt })
+        });
+        const { audio_url, response } = await ttsResponse.json();
+
+        const audio = new Audio(audio_url);
+        audio.play();
+
+        await logConversation(prompt, response, audio_url);
       };
 
       recognition.onerror = function(event) {
@@ -66,14 +89,8 @@
       };
     }
 
-    async function speak(text) {
-      const utter = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(utter);
-      return "https://dummy-url.com/audio.mp3";
-    }
-
     async function logConversation(prompt, response, audioUrl) {
-      const { data, error } = await supabase.from('conversations').insert([
+      const { error } = await supabase.from('conversations').insert([
         {
           query: prompt,
           response: response,
@@ -83,7 +100,7 @@
       if (error) {
         console.error('Supabase log error:', error);
       } else {
-        console.log('Conversation logged:', data);
+        console.log('Conversation logged');
       }
     }
 
