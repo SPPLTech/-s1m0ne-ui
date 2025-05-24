@@ -1,0 +1,28 @@
+# Codespaces-compatible push script to deploy S1M0NE index.html
+
+# Step 1: Ensure you are in the root of the cloned Codespace repo
+
+cat > index.html <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>S1M0NE – Voice Assistant</title>
+</head>
+<body>
+  <h1>S1M0NE – Simulation One</h1>
+  <p>A benevolent aide for humanity, guided by Ubuntu and Asimov’s Laws.</p>
+  <p>This static interface represents the live conversational UI for S1M0NE by Suppple AI.</p>
+</body>
+</html>
+EOF
+
+# Step 2: Commit and push
+
+git add index.html
+git commit -m "Add working static HTML for GitHub Pages"
+git push origin main
+
+# Result
+echo "✅ index.html pushed — now enable GitHub Pages from Settings > Pages"
