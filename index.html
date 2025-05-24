@@ -16,6 +16,10 @@
       height: 100vh;
       margin: 0;
     }
+    header img {
+      height: 60px;
+      margin-bottom: 20px;
+    }
     h1 {
       color: #f44336;
     }
@@ -24,7 +28,7 @@
       color: white;
       border: none;
       padding: 15px 30px;
-      margin-top: 20px;
+      margin: 10px;
       font-size: 16px;
       cursor: pointer;
       border-radius: 8px;
@@ -32,23 +36,41 @@
     button:hover {
       background-color: #c62828;
     }
+    .log-container {
+      max-height: 300px;
+      overflow-y: auto;
+      width: 80%;
+      margin-top: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .log-entry {
+      margin: 5px 0;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.min.js"></script>
 </head>
 <body>
+  <header>
+    <img src="suppple-logo.png" alt="Suppple Logo">
+  </header>
   <h1>S1M0NE – Simulation One</h1>
   <p>A benevolent voice-powered assistant by Suppple AI</p>
   <button onclick="startConversation()">START A CONVERSATION</button>
   <button onclick="exportCSV()">Download Logs</button>
+  <button onclick="exportPDF()">Export Transcript PDF</button>
+
+  <div class="log-container" id="logContainer"></div>
 
   <script>
     const SUPABASE_URL = "https://mgwbmwlfprbejfkgytip.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUz..."; // redacted for security
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUz..."; // secure in production
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function getLiveKitToken() {
-      const res = await fetch("https://your-backend.com/get-livekit-token");
+      const res = await fetch("https://your-prod-backend.com/get-livekit-token");
       const data = await res.json();
       return data.token;
     }
@@ -56,7 +78,7 @@
     async function connectLiveKit() {
       const token = await getLiveKitToken();
       const room = new Livekit.Room();
-      await room.connect("wss://your-livekit-server-url", token);
+      await room.connect("wss://your-prod-livekit-host", token);
       console.log("Connected to LiveKit");
       return room;
     }
@@ -70,13 +92,15 @@
       recognition.start();
       recognition.onresult = async function(event) {
         const prompt = event.results[0][0].transcript;
+        appendLog(`You: ${prompt}`);
 
-        const ttsResponse = await fetch("https://your-backend.com/tts", {
+        const ttsResponse = await fetch("https://your-prod-backend.com/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: prompt })
         });
         const { audio_url, response } = await ttsResponse.json();
+        appendLog(`S1M0NE: ${response}`);
 
         const audio = new Audio(audio_url);
         audio.play();
@@ -87,6 +111,14 @@
       recognition.onerror = function(event) {
         console.error("Speech recognition error", event.error);
       };
+    }
+
+    function appendLog(text) {
+      const container = document.getElementById("logContainer");
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.textContent = text;
+      container.appendChild(entry);
     }
 
     async function logConversation(prompt, response, audioUrl) {
@@ -122,6 +154,26 @@
       link.click();
       document.body.removeChild(link);
     }
+
+    async function exportPDF() {
+      const { data, error } = await supabase.from("conversations").select("*");
+      if (error) return alert("Export failed");
+
+      const doc = new window.jspdf.jsPDF();
+      doc.setFontSize(18);
+      doc.text("S1M0NE Conversations", 14, 22);
+      doc.setFontSize(12);
+
+      let y = 30;
+      data.forEach(row => {
+        doc.text(`Q: ${row.query}`, 14, y);
+        y += 6;
+        doc.text(`A: ${row.response}`, 14, y);
+        y += 10;
+      });
+      doc.save("s1m0ne_transcript.pdf");
+    }
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
